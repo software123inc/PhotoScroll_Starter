@@ -29,12 +29,63 @@
 import UIKit
 
 class ZoomedPhotoViewController: UIViewController {
-  @IBOutlet weak var imageView: UIImageView!
-  var photoName: String?
-  
-  override func viewDidLoad() {
-    if let photoName = photoName {
-      imageView.image = UIImage(named: photoName)
+    @IBOutlet weak var scrollView: UIScrollView!
+    @IBOutlet weak var imageView: UIImageView!
+    @IBOutlet weak var imageViewBottomConstraint: NSLayoutConstraint!
+    @IBOutlet weak var imageViewTrailingConstraint: NSLayoutConstraint!
+    @IBOutlet weak var imageViewLeadingConstraint: NSLayoutConstraint!
+    @IBOutlet weak var imageViewTopConstraint: NSLayoutConstraint!
+    
+    var photoName: String?
+    
+    //MARK: - View Life Cycle
+    
+    override func viewDidLoad() {
+        if let photoName = photoName {
+            imageView.image = UIImage(named: photoName)
+        }
     }
-  }
+    
+    override func viewWillLayoutSubviews() {
+        super.viewWillLayoutSubviews()
+        updateMinZoomScaleForSize(view.bounds.size)
+    }
+    
+    //MARK: - Instance methods
+    
+    // Default max zoom scale = 1, normal size.
+    private func updateMinZoomScaleForSize(_ size: CGSize) {
+        let widthScale = size.width / imageView.bounds.width
+        let heightScale = size.height / imageView.bounds.height
+        let minScale = min(widthScale, heightScale)
+        
+        scrollView.minimumZoomScale = minScale
+        scrollView.zoomScale = minScale
+    }
+}
+
+extension ZoomedPhotoViewController: UIScrollViewDelegate {
+    func viewForZooming(in scrollView: UIScrollView) -> UIView? {
+        return imageView
+    }
+    
+    //1 The scroll view calls scrollViewDidZoom(_:) each time the user zooms. In response, you simply call updateConstraintsForSize(_:) and pass in the view’s bounds size.
+    func scrollViewDidZoom(_ scrollView: UIScrollView) {
+      updateConstraintsForSize(view.bounds.size)
+    }
+
+    //2 updateConstraintsForSize(_:) gets around an annoyance with UIScrollView: If the scroll view’s content size is smaller than its bounds, it places the contents at the top-left of the screen, rather than the center.
+    private func updateConstraintsForSize(_ size: CGSize) {
+      //3 You center the image vertically by subtracting the height of imageView from the view‘s height and dividing the result in half. This value adds padding to the top and bottom imageView constraints.
+      let yOffset = max(0, (size.height - imageView.frame.height) / 2)
+      imageViewTopConstraint.constant = yOffset
+      imageViewBottomConstraint.constant = yOffset
+      
+      //4 Similarly, you calculate an offset for the leading and trailing constraints of imageView, based on the width of the view.
+      let xOffset = max(0, (size.width - imageView.frame.width) / 2)
+      imageViewLeadingConstraint.constant = xOffset
+      imageViewTrailingConstraint.constant = xOffset
+        
+      view.layoutIfNeeded()
+    }
 }
